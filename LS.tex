@@ -1,0 +1,104 @@
+\begin{document}
+
+\begin{zed}
+[ Name, BName ]
+\end{zed}
+
+\begin{schema}{LS}
+ books : \power BName \\
+ students : \power Name \\
+ borrowed:\power BName\\
+ has : Name \pfun \power BName 
+\where
+ \dom has \subseteq students
+\end{schema}
+
+\begin{schema}{Init}
+ LS
+\where
+ books =~\emptyset \\
+ students =~\emptyset \\
+ borrowed=~\emptyset \\
+ has =~\emptyset
+
+\end{schema}
+
+\begin{schema}{AddStudent}
+ \Delta LS \\
+ s? : Name 
+\where
+ s? \notin students \\
+ students' = students \cup \{ s? \} \\
+ has' = has\\
+ borrowed'=borrowed\\
+ books'=books
+\end{schema}
+
+\begin{schema}{DeleteStudent}
+ \Delta LS \\
+ s? : Name 
+\where
+ s? \in students \\
+ has(s?) = \emptyset \\
+ students' = students \setminus \{ s? \} \\
+ has' = \{ s? \} \ndres has\\
+ s?  \in \dom  has \implies borrowed'=borrowed \setminus has(s?)\\
+ s?  \notin \dom  has \implies borrowed'=borrowed
+\end{schema}
+
+\begin{schema}{AddBook}
+ \Delta LS \\
+ b? : BName
+\where
+ b? \notin books \\
+ books' = books \cup \{ b? \} \\
+ students'=students\\
+ has' = has\\
+ borrowed'=borrowed
+\end{schema}
+
+\begin{schema}{DeleteBook}
+ \Delta LS \\
+ b? : BName 
+\where
+ b? \in books \\
+ b? \notin borrowed \\
+ books' = books \setminus \{ b? \} \\
+ students'=students\\
+ has' = has\\
+ b? \in borrowed \implies borrowed'=borrowed \setminus\{ b?\}\\
+ b? \notin borrowed \implies borrowed'=borrowed
+\end{schema}
+
+\begin{schema}{BorrowBook}
+ \Delta LS \\
+ s? : Name\\
+ b? : BName
+\where
+ s? \in students \\
+ b? \in books\\
+ b? \notin borrowed\\
+ students' = students \\
+ books'=books\\
+ borrowed' = borrowed \cup \{ b? \} \\
+ s? \in \dom has \implies has' = has \oplus \{ s? \mapsto has(s?) \cup \{b?\} \} \\
+ s? \notin \dom has \implies has' = has \cup \{ s? \mapsto \{b?\} \}
+\end{schema}
+
+\begin{schema}{ReturnBook}
+ \Delta LS \\
+ s? : Name\\
+ b? : BName
+\where
+ s? \in students \\
+ s? \in \dom has \\
+ b? \in books\\
+ b? \in borrowed\\
+ b? \in has(s?) \\
+ students' = students \\
+ books'=books\\
+ borrowed' = borrowed \setminus \{ b? \} \\
+ has' = has \oplus \{ s? \mapsto has(s?) \setminus \{b?\} \} \\
+\end{schema}
+
+\end{document}
