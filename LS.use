@@ -1,0 +1,108 @@
+model LibrarySystem
+
+enum Status {instock, borrowed,reserved}
+enum Category {fiction, horror, commics, fantasy, novel, general}
+enum Grade {normal,VIP}
+
+class User
+attributes
+name : String
+end
+
+class ID
+attributes
+number : Integer
+end
+
+class Student < User
+attributes
+id : ID
+grade : Grade
+operations
+borrowbook(b:Book)
+newId(n:Integer):ID
+reservebook(b:Book)
+returnbook(b:Book)
+cancelreserve(b:Book)
+end
+
+class Book
+attributes
+title : String
+author : Author 
+status : Status
+category : Category
+end
+
+class Admin < User
+operations
+updatebookcategory(b:Book,cat:Category)
+upgradestudent(s:Student)
+end
+
+class Author < User
+operations
+publishbook(b:Book)
+end
+
+association IdTable between 
+Student[1]
+ID[1] end
+
+association Publishes between
+Author[0..1] role author
+Book[*] role published
+end
+
+association Borrows between
+Student[0..1] role borrowedBy
+Book[0..5] role borrowing
+end
+
+association Reserves between
+Student[0..1] role reservedBy
+Book[0..2] role reserving
+end
+
+constraints
+
+context Student::newId(n:Integer):ID
+pre: n>=100
+post NewId: result.oclIsNew()
+post IdNumber: result.number = n
+post LindId: self.id=result
+
+context Admin::updatebookcategory(b:Book,cat:Category)
+pre: not(b.category=cat)
+pre: b.status = #instock
+post categoryUpdated: b.category = cat
+
+
+context Admin::upgradestudent(s:Student)
+pre: s.grade = #normal
+post: s.grade = #VIP 
+
+context Author::publishbook(b:Book)
+pre: b.author=null
+post: self.published->includes(b) and b.author=self
+
+context Student::borrowbook(b:Book)
+pre bookNotborrowed: self.borrowing->excludes(b)
+pre bookNotReserved: b.status = #instock
+pre notExceedLimit: self.borrowing->size()<5 
+post bookStatusUpdated: b.status = #borrowed
+post bookRelationUpdated: self.borrowing->includes(b)
+
+context Student::returnbook(b:Book)
+pre bookBorrowed: self.borrowing->includes(b)
+post bookReturned: b.status = #instock and self.borrowing->excludes(b)
+
+context Student::reservebook(b:Book)
+pre: b.status = #instock
+pre: self.grade = #VIP
+post: b.status = #reserved and self.reserving->includes(b)
+
+context Student::cancelreserve(b:Book)
+pre: b.status = #reserved 
+pre: self.reserving->includes(b)
+post: b.status = #instock and self.reserving->excludes(b)
