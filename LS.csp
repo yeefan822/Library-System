@@ -1,0 +1,58 @@
+--This system is created and implemented by Jeff Peng and Dylan Xin
+datatype BOOK = book1|book2|book3
+datatype STUDENT = Jeff|Zach
+datatype STATUS = available|unavailable
+datatype RESPONSE = yes|no
+
+channel register,delete,login,studentexist,record,logout:STUDENT
+channel borrow,return,read,reserve,add,remove :BOOK
+channel checkbook,allowreserve:STATUS
+channel checkstudentborrow:RESPONSE
+channel deleted,failed,instock,out,alreadyreserved,borrowsuccessful,reservesuccessful,confirm,reject,upgrade,setcategory,setauthor
+
+
+CHECKBOOK = (borrow?b->checkbook?x->CHECKBOOK)[](reserve?b->allowreserve?x->CHECKBOOK)
+
+STUDENTLOGIN = studentexist?u -> login!u ->(upgrade->STUDENTINSTANCE[]STUDENTINSTANCE)
+
+STUDENTINSTANCE = (record?u->STUDENTINSTANCE)[](borrow?b->checkbook?x->(borrowsuccessful->STUDENTINSTANCE|~|out->STUDENTINSTANCE))
+[](return?b->STUDENTINSTANCE)[](reserve?b->allowreserve?x->(reservesuccessful->STUDENTINSTANCE|~|alreadyreserved->STUDENTINSTANCE))[](logout?u->STUDENTLOGIN)
+
+EDITLIB = (add?b->setcategory->setauthor->EDITLIB)[](remove?b->EDITLIB)[](register?u->studentexist!u->EDITLIB)[]
+(delete?u->checkstudentborrow?u->(deleted->EDITLIB|~|failed->EDITLIB))
+
+LIBRARY = EDITLIB [|{|studentexist|}|] STUDENTLOGIN [|{|checkbook,borrow,reserve,allowreserve|}|]CHECKBOOK
+
+STUDENT_BORROW_TEST_TRACE = add.book1 ->setcategory ->setauthor->register.Jeff ->studentexist.Jeff->login.Jeff
+->borrow.book1->checkbook.available->borrowsuccessful->return.book1->logout.Jeff->STOP
+
+STUDENT_RESERVE_TEST_TRACE = add.book1 ->setcategory->setauthor->register.Jeff->studentexist.Jeff->login.Jeff->reserve.book1->allowreserve.available
+->reservesuccessful->logout.Jeff->STOP
+
+STUDENT_RESERVE_FAILED_TEST_TRACE = add.book1 ->setcategory->setauthor->register.Jeff->studentexist.Jeff->login.Jeff->reserve.book1
+->allowreserve.unavailable->alreadyreserved->logout.Jeff->STOP
+
+STUDENT_RESERVE_THEN_BORROW_TEST_TRACE = add.book1 ->setcategory->setauthor->register.Jeff->studentexist.Jeff->login.Jeff->reserve.book1->allowreserve.available
+->reservesuccessful->borrow.book1->checkbook.available->borrowsuccessful->return.book1->logout.Jeff->STOP
+
+DELETE_USER_TEST_TRACE = register.Jeff -> studentexist.Jeff ->delete.Jeff->checkstudentborrow.no->deleted->STOP
+
+ADD_BOOK_TEST_TRACE = add.book1 ->setcategory->setauthor->add.book2->setcategory->setauthor->add.book3->setcategory->setauthor->STOP
+
+STUDENT_BORROW_FAILED_TEST_TRACE = add.book1 ->setcategory ->setauthor->register.Jeff ->studentexist.Jeff->login.Jeff
+->borrow.book1->checkbook.unavailable->out->logout.Jeff->STOP
+
+REMOVE_BOOK_TEST_TRACE = add.book1 ->setcategory->setauthor-> remove.book1->STOP
+GEN = add!book1 -> GEN [] add!book2 -> GEN [] add!book3 -> GEN
+
+MAIN = LIBRARY [| {|add|} |] GEN
+
+
+assert MAIN [T= STUDENT_BORROW_TEST_TRACE
+assert MAIN [T= STUDENT_RESERVE_TEST_TRACE
+assert MAIN [T= STUDENT_RESERVE_FAILED_TEST_TRACE 
+assert MAIN [T= STUDENT_RESERVE_THEN_BORROW_TEST_TRACE
+assert MAIN [T= DELETE_USER_TEST_TRACE
+assert MAIN [T= ADD_BOOK_TEST_TRACE
+assert MAIN [T= STUDENT_BORROW_FAILED_TEST_TRACE
+assert MAIN [T= REMOVE_BOOK_TEST_TRACE
