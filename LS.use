@@ -1,6 +1,6 @@
 model LibrarySystem
 
-enum Status {instock, borrowed,reserved}
+enum Status {instock,borrowed,reserved}
 enum Category {fiction, horror, commics, fantasy, novel, general}
 enum Grade {normal,VIP}
 
@@ -18,7 +18,10 @@ class Student < User
 attributes
 id : ID
 grade : Grade
+loggedin : Boolean
 operations
+login()
+logout()
 borrowbook(b:Book)
 newId(n:Integer):ID
 reservebook(b:Book)
@@ -66,6 +69,19 @@ end
 
 constraints
 
+context Student inv NormalStudentCannotHaveHorror:
+self.grade=#normal implies
+self.borrowing->select(b|b.category=#horror)->size()=0
+and  self.reserving->select(r|r.category=#horror)->size=0
+
+context Student::login()
+pre: self.loggedin = false
+post: self.loggedin = true
+
+context Student::logout()
+pre: self.loggedin = true
+post: self.loggedin = false
+
 context Student::newId(n:Integer):ID
 pre: n>=100
 post NewId: result.oclIsNew()
@@ -87,22 +103,26 @@ pre: b.author=null
 post: self.published->includes(b) and b.author=self
 
 context Student::borrowbook(b:Book)
+pre studentloggedin: self.loggedin = true
 pre bookNotborrowed: self.borrowing->excludes(b)
-pre bookNotReserved: b.status = #instock
+pre bookNotReserved: b.status = #instock 
 pre notExceedLimit: self.borrowing->size()<5 
 post bookStatusUpdated: b.status = #borrowed
 post bookRelationUpdated: self.borrowing->includes(b)
 
 context Student::returnbook(b:Book)
+pre studentloggedin: self.loggedin = true
 pre bookBorrowed: self.borrowing->includes(b)
 post bookReturned: b.status = #instock and self.borrowing->excludes(b)
 
 context Student::reservebook(b:Book)
+pre studentloggedin: self.loggedin = true
 pre: b.status = #instock
 pre: self.grade = #VIP
 post: b.status = #reserved and self.reserving->includes(b)
 
 context Student::cancelreserve(b:Book)
+pre studentloggedin: self.loggedin = true
 pre: b.status = #reserved 
 pre: self.reserving->includes(b)
 post: b.status = #instock and self.reserving->excludes(b)

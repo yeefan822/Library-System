@@ -10,6 +10,7 @@
 !insert (Student1,id1) into IdTable
 !Student1.id := id1
 !Student1.grade := Grade::normal
+!Student1.loggedin := false
 !new Book('book1')
 !new Book('book2')
 !book1.title := 'Greenday'
@@ -25,6 +26,7 @@
 !Student2.grade := Grade::VIP
 !insert (Student2,id2) into IdTable
 !Student2.id := id2
+!Student2.loggedin := false
 !new Student('Student3')
 !new ID('id3')
 !id3.number := 104
@@ -32,6 +34,13 @@
 !Student3.id := id3
 !Student3.name := 'Jack'
 !Student3.grade := Grade::normal
+!Student3.loggedin := false
+!openter Student3 login()
+!Student3.loggedin := true
+!opexit
+!openter Student2 login()
+!Student2.loggedin := true
+!opexit
 !new Author('Author1')
 !Author1.name := 'Yeefan'
 !openter Admin upgradestudent(Student3)
@@ -57,3 +66,10 @@
 !delete (Student2,book1) from Reserves
 !book1.status := Status::instock
 !opexit
+!openter Student2 logout()
+!Student2.loggedin := false
+!opexit
+!insert (Student3,book2) into Borrows
+!book2.status := Status::borrowed
+!insert (Student2,book1) into Reserves
+!book1.status := Status::reserved
